@@ -1,0 +1,80 @@
+# Gam34fun 24/7 Automation Configuration
+# This file defines the automation setup for generating games 24/7
+
+# OpenHands Automation API Configuration
+api_host: "https://app.all-hands.dev/api/automation/v1"
+
+# Game Generation Settings
+game_generation:
+  # Number of sub-agents for game generation
+  num_agents: 100
+  
+  # Games to generate per agent per run
+  games_per_agent: 1
+  
+  # Categories each agent can work on
+  categories:
+    - action
+    - adventure
+    - puzzle
+    - racing
+    - sports
+    - strategy
+    - horror
+    - mystery
+    - arcade
+    - rpg
+    - simulation
+    - casual
+    - "2d"
+    - "3d"
+    - multiplayer
+
+# Update Schedule
+schedule:
+  # Run every hour
+  cron: "0 * * * *"
+  
+  # Timezone
+  timezone: "UTC"
+  
+  # Enable continuous generation
+  continuous: true
+
+# Repository Configuration
+repository:
+  # The Vercel/GitHub repo URL
+  url: "https://github.com/YOUR_USERNAME/gam34fun"
+  
+  # Branch to push updates
+  branch: "main"
+  
+  # Auto-deploy on push
+  auto_deploy: true
+
+# Game Quality Standards
+quality:
+  min_difficulty: "easy"
+  max_difficulty: "hard"
+  require_playable: true
+  require_instructions: true
+  min_description_length: 50
+
+# Notification Settings
+notifications:
+  # Discord webhook (optional)
+  discord_webhook: ""
+  
+  # Slack webhook (optional)
+  slack_webhook: ""
+  
+  # Email on errors (optional)
+  email_on_error: ""
+
+# Monitoring
+monitoring:
+  # Track game generation metrics
+  track_metrics: true
+  
+  # Alert if no games generated in X hours
+  alert_on_stall_hours: 4

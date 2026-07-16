@@ -1,0 +1,15 @@
+{
+  "id": "racer-league",
+  "title": "Racer League",
+  "description": "An exciting simulation game with medium difficulty",
+  "category": "simulation",
+  "tags": [
+    "simulation",
+    "simulation",
+    "medium"
+  ],
+  "controls": "Arrow keys / WASD to move",
+  "difficulty": "medium",
+  "generated_at": "2026-07-16T20:57:16.360355",
+  "ai_generated": true
+}

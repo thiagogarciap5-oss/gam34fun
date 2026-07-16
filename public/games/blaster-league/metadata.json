@@ -1,0 +1,15 @@
+{
+  "id": "blaster-league",
+  "title": "Blaster League",
+  "description": "An exciting platformer game with medium difficulty",
+  "category": "adventure",
+  "tags": [
+    "adventure",
+    "platformer",
+    "medium"
+  ],
+  "controls": "Arrow keys / WASD to move",
+  "difficulty": "medium",
+  "generated_at": "2026-07-16T20:57:16.361190",
+  "ai_generated": true
+}

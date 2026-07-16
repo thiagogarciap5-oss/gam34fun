@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Racer League</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(135deg, #0a0a0f, #1a1a25);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(180deg, #12121a 0%, #1a1a25 100%);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 0 40px #00f0ff40, 0 0 80px #00ff8820;
+            border: 2px solid #00f0ff40;
+        }
+        #game-canvas {
+            display: block;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%);
+            pointer-events: none;
+        }
+        .score-display {
+            color: #ff6b35;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ff6b35;
+        }
+        .level-display {
+            color: #00f0ff;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        #start-screen, #game-over-screen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(10, 10, 15, 0.95);
+            z-index: 10;
+        }
+        .game-title {
+            font-size: 48px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #00f0ff, #00ff88, #ff6b35);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            text-shadow: none;
+        }
+        .game-subtitle {
+            color: #888;
+            font-size: 18px;
+            margin-bottom: 40px;
+        }
+        .play-btn {
+            padding: 16px 48px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #00f0ff, #00ff88);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .play-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px #00f0ff60;
+        }
+        .instructions {
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+        <div id="ui-overlay">
+            <div class="score-display">Score: <span id="score">0</span></div>
+            <div class="level-display">Level: <span id="level">1</span></div>
+        </div>
+        <div id="start-screen">
+            <div class="game-title">Racer League</div>
+            <div class="game-subtitle">An AI-Generated Game</div>
+            <button class="play-btn" onclick="startGame()">PLAY</button>
+            <div class="instructions">Use arrow keys or WASD to move • Collect items • Avoid enemies</div>
+        </div>
+        <div id="game-over-screen" class="hidden">
+            <div class="game-title">GAME OVER</div>
+            <div class="game-subtitle">Final Score: <span id="final-score">0</span></div>
+            <button class="play-btn" onclick="startGame()">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const levelEl = document.getElementById('level');
+        const finalScoreEl = document.getElementById('final-score');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+
+        const primaryColor = '#00f0ff';
+        const secondaryColor = '#00ff88';
+        const accentColor = '#ff6b35';
+
+        let gameRunning = false;
+        let score = 0;
+        let level = 1;
+        let player, collectibles, enemies, particles;
+        let keys = {};
+
+        class Player {
+            constructor() {
+                this.x = 400;
+                this.y = 300;
+                this.size = 30;
+                this.speed = 5;
+                this.color = primaryColor;
+            }
+            update() {
+                if (keys['ArrowUp'] || keys['KeyW']) this.y -= this.speed;
+                if (keys['ArrowDown'] || keys['KeyS']) this.y += this.speed;
+                if (keys['ArrowLeft'] || keys['KeyA']) this.x -= this.speed;
+                if (keys['ArrowRight'] || keys['KeyD']) this.x += this.speed;
+                this.x = Math.max(this.size, Math.min(canvas.width - this.size, this.x));
+                this.y = Math.max(this.size, Math.min(canvas.height - this.size, this.y));
+            }
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = accentColor;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Collectible {
+            constructor() {
+                this.x = Math.random() * (canvas.width - 40) + 20;
+                this.y = Math.random() * (canvas.height - 40) + 20;
+                this.size = 15;
+                this.pulse = 0;
+            }
+            update() {
+                this.pulse += 0.1;
+            }
+            draw() {
+                const size = this.size + Math.sin(this.pulse) * 3;
+                ctx.save();
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = accentColor;
+                ctx.fillStyle = accentColor;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Enemy {
+            constructor() {
+                this.x = Math.random() < 0.5 ? -30 : canvas.width + 30;
+                this.y = Math.random() * canvas.height;
+                this.size = 20 + level * 2;
+                this.speed = 2 + level * 0.5;
+                this.vx = this.x < 0 ? this.speed : -this.speed;
+                this.vy = (Math.random() - 0.5) * this.speed;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.y < this.size || this.y > canvas.height - this.size) this.vy *= -1;
+            }
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = secondaryColor;
+                ctx.fillStyle = secondaryColor;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y - this.size);
+                ctx.lineTo(this.x + this.size, this.y + this.size);
+                ctx.lineTo(this.x - this.size, this.y + this.size);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = Math.random() * 5 + 2;
+                this.speedX = (Math.random() - 0.5) * 8;
+                this.speedY = (Math.random() - 0.5) * 8;
+                this.life = 1;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life -= 0.02;
+            }
+            draw() {
+                ctx.globalAlpha = this.life;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function init() {
+            player = new Player();
+            collectibles = [];
+            enemies = [];
+            particles = [];
+            for (let i = 0; i < 5 + level; i++) collectibles.push(new Collectible());
+            for (let i = 0; i < 2 + level; i++) enemies.push(new Enemy());
+        }
+
+        function spawnParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function checkCollision(a, b) {
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            return Math.sqrt(dx * dx + dy * dy) < a.size + b.size;
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            ctx.fillStyle = 'rgba(18, 18, 26, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            player.update();
+            player.draw();
+
+            collectibles.forEach((c, i) => {
+                c.update();
+                c.draw();
+                if (checkCollision(player, c)) {
+                    spawnParticles(c.x, c.y, accentColor, 10);
+                    collectibles.splice(i, 1);
+                    score += 100;
+                    scoreEl.textContent = score;
+                    collectibles.push(new Collectible());
+                }
+            });
+
+            enemies.forEach(e => {
+                e.update();
+                e.draw();
+                if (checkCollision(player, e)) {
+                    gameOver();
+                    return;
+                }
+            });
+
+            particles = particles.filter(p => {
+                p.update();
+                p.draw();
+                return p.life > 0;
+            });
+
+            if (score > level * 500) {
+                level++;
+                levelEl.textContent = level;
+                enemies.push(new Enemy());
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            score = 0;
+            level = 1;
+            scoreEl.textContent = '0';
+            levelEl.textContent = '1';
+            init();
+            gameRunning = true;
+            gameLoop();
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            finalScoreEl.textContent = score;
+            gameOverScreen.classList.remove('hidden');
+        }
+
+        document.addEventListener('keydown', e => keys[e.code] = true);
+        document.addEventListener('keyup', e => keys[e.code] = false);
+    </script>
+</body>
+</html>

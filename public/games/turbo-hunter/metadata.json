@@ -1,0 +1,15 @@
+{
+  "id": "turbo-hunter",
+  "title": "Turbo Hunter",
+  "description": "Challenge yourself with this epic bubble shooter adventure",
+  "category": "casual",
+  "tags": [
+    "casual",
+    "bubble shooter",
+    "easy"
+  ],
+  "controls": "Arrow keys / WASD to move",
+  "difficulty": "easy",
+  "generated_at": "2026-07-16T20:57:16.360876",
+  "ai_generated": true
+}
