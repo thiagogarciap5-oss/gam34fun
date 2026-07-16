@@ -1,9 +1,10 @@
 {
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
-  "installCommand": "npm install",
+  "installCommand": "",
   "framework": "nextjs",
   "outputDirectory": ".next",
+  "nodeVersion": "18",
   "headers": [
     {
       "source": "/games/(.*)",
