@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Mario Run</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #5c94fc; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: system-ui, sans-serif; color: #fff; }
+        h1 { color: #fff; text-shadow: 2px 2px #000; margin-bottom: 10px; font-size: 32px; }
+        #score { font-size: 24px; color: #fff; text-shadow: 1px 1px #000; margin-bottom: 15px; }
+        canvas { border: 4px solid #8b4513; border-radius: 4px; background: #5c94fc; cursor: pointer; }
+        #gameOver { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); padding: 30px 50px; border-radius: 16px; text-align: center; display: none; }
+        #gameOver h2 { color: #ff0000; font-size: 36px; margin-bottom: 10px; }
+        #gameOver p { font-size: 20px; margin-bottom: 20px; }
+        button { padding: 12px 30px; font-size: 18px; background: #ff0000; border: none; border-radius: 8px; cursor: pointer; color: #fff; font-weight: bold; }
+        button:hover { background: #cc0000; }
+        .instructions { margin-top: 15px; color: #000; text-shadow: none; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>🍄 SUPER MARIO RUN</h1>
+    <div id="score">Distance: 0m</div>
+    <div style="position: relative;">
+        <canvas id="game" width="800" height="400"></canvas>
+        <div id="gameOver">
+            <h2>GAME OVER!</h2>
+            <p>Distance: <span id="finalScore">0</span>m</p>
+            <button onclick="restart()">Play Again</button>
+        </div>
+    </div>
+    <p class="instructions">SPACE or Click to Jump | Double Jump Available!</p>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        
+        let mario, obstacles, clouds, coins, score, speed, gameLoop, gameRunning, canDoubleJump;
+        
+        function init() {
+            mario = { x: 100, y: 300, vy: 0, size: 40, onGround: true };
+            obstacles = [];
+            clouds = [];
+            coins = [];
+            score = 0;
+            speed = 6;
+            canDoubleJump = true;
+            gameRunning = true;
+            document.getElementById('score').textContent = 'Distance: 0m';
+            document.getElementById('gameOver').style.display = 'none';
+        }
+        
+        function drawBackground() {
+            // Sky
+            ctx.fillStyle = '#5c94fc';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Hills
+            ctx.fillStyle = '#00a800';
+            for (let i = 0; i < 3; i++) {
+                ctx.beginPath();
+                ctx.arc(200 + i * 400 - (score * 0.5) % 400, 350, 100, Math.PI, 0);
+                ctx.fill();
+            }
+            
+            // Ground
+            ctx.fillStyle = '#00a800';
+            ctx.fillRect(0, 350, canvas.width, 50);
+            ctx.fillStyle = '#8b4513';
+            ctx.fillRect(0, 350, canvas.width, 10);
+            
+            // Clouds
+            ctx.fillStyle = '#fff';
+            clouds.forEach(c => {
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, 20, 0, Math.PI * 2);
+                ctx.arc(c.x + 25, c.y - 10, 25, 0, Math.PI * 2);
+                ctx.arc(c.x + 50, c.y, 20, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        function drawMario() {
+            // Body
+            ctx.fillStyle = '#e52521';
+            ctx.fillRect(mario.x - 12, mario.y - 20, 24, 30);
+            
+            // Head
+            ctx.fillStyle = '#f7a899';
+            ctx.beginPath();
+            ctx.arc(mario.x, mario.y - 25, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hat
+            ctx.fillStyle = '#e52521';
+            ctx.fillRect(mario.x - 18, mario.y - 38, 36, 8);
+            
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(mario.x + 3, mario.y - 27, 8, 4);
+            
+            // Mustache
+            ctx.fillStyle = '#4a2c0a';
+            ctx.fillRect(mario.x - 5, mario.y - 20, 15, 4);
+        }
+        
+        function drawObstacles() {
+            obstacles.forEach(obs => {
+                if (obs.type === 'goomba') {
+                    // Body
+                    ctx.fillStyle = '#8b4513';
+                    ctx.beginPath();
+                    ctx.arc(obs.x, obs.y - 15, 20, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Eyes
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(obs.x - 10, obs.y - 20, 8, 8);
+                    ctx.fillRect(obs.x + 2, obs.y - 20, 8, 8);
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(obs.x - 8, obs.y - 18, 4, 4);
+                    ctx.fillRect(obs.x + 4, obs.y - 18, 4, 4);
+                    // Feet
+                    ctx.fillStyle = '#4a2c0a';
+                    ctx.fillRect(obs.x - 15, obs.y, 12, 8);
+                    ctx.fillRect(obs.x + 3, obs.y, 12, 8);
+                } else if (obs.type === 'pipe') {
+                    ctx.fillStyle = '#00a800';
+                    ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+                    ctx.fillStyle = '#008000';
+                    ctx.fillRect(obs.x - 5, obs.y, obs.w + 10, 15);
+                } else if (obs.type === 'brick') {
+                    ctx.fillStyle = '#c7840f';
+                    ctx.fillRect(obs.x, obs.y, 40, 40);
+                    ctx.fillStyle = '#8b4513';
+                    ctx.fillRect(obs.x + 2, obs.y + 2, 36, 36);
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '20px Arial';
+                    ctx.fillText('?', obs.x + 12, obs.y + 28);
+                }
+            });
+        }
+        
+        function drawCoins() {
+            ctx.fillStyle = '#ffd700';
+            ctx.strokeStyle = '#ff8c00';
+            coins.forEach(c => {
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#ff8c00';
+                ctx.font = 'bold 14px Arial';
+                ctx.fillText('¢', c.x - 5, c.y + 5);
+                ctx.fillStyle = '#ffd700';
+            });
+        }
+        
+        function update() {
+            if (!gameRunning) return;
+            
+            // Mario physics
+            mario.vy += 0.8;
+            mario.y += mario.vy;
+            
+            if (mario.y > 310 - mario.size/2) {
+                mario.y = 310 - mario.size/2;
+                mario.vy = 0;
+                mario.onGround = true;
+                canDoubleJump = true;
+            }
+            
+            // Score
+            score += speed / 10;
+            document.getElementById('score').textContent = 'Distance: ' + Math.floor(score) + 'm';
+            
+            // Speed up
+            if (Math.floor(score) % 100 === 0 && speed < 15) speed += 0.1;
+            
+            // Spawn clouds
+            if (Math.random() < 0.02) {
+                clouds.push({ x: canvas.width, y: Math.random() * 150 + 30 });
+            }
+            clouds.forEach(c => c.x -= 1);
+            clouds = clouds.filter(c => c.x > -60);
+            
+            // Spawn obstacles
+            if (obstacles.length === 0 || obstacles[obstacles.length - 1].x < canvas.width - 300 - Math.random() * 200) {
+                const type = ['goomba', 'pipe', 'brick'][Math.floor(Math.random() * 3)];
+                if (type === 'goomba') {
+                    obstacles.push({ x: canvas.width, y: 310, type: 'goomba' });
+                } else if (type === 'pipe') {
+                    obstacles.push({ x: canvas.width, y: 250 + Math.random() * 50, w: 60, h: 100 + Math.random() * 50, type: 'pipe' });
+                } else {
+                    obstacles.push({ x: canvas.width, y: 270, type: 'brick' });
+                }
+            }
+            obstacles.forEach(o => o.x -= speed);
+            obstacles = obstacles.filter(o => o.x > -60);
+            
+            // Spawn coins
+            if (Math.random() < 0.03) {
+                coins.push({ x: canvas.width, y: Math.random() * 150 + 100 });
+            }
+            coins.forEach(c => c.x -= speed);
+            coins = coins.filter(c => c.x > -20);
+            
+            // Collision with obstacles
+            obstacles.forEach(obs => {
+                let collision = false;
+                if (obs.type === 'goomba') {
+                    collision = mario.x + 15 > obs.x - 20 && mario.x - 15 < obs.x + 20 && mario.y + 20 > obs.y - 35;
+                } else if (obs.type === 'pipe') {
+                    collision = mario.x + 15 > obs.x && mario.x - 15 < obs.x + obs.w && mario.y + 20 > obs.y;
+                } else if (obs.type === 'brick') {
+                    collision = mario.x + 15 > obs.x && mario.x - 15 < obs.x + 40 && mario.y + 20 > obs.y && mario.y - 20 < obs.y + 40;
+                }
+                if (collision) endGame();
+            });
+            
+            // Coin collection
+            coins.forEach((c, i) => {
+                if (Math.hypot(mario.x - c.x, mario.y - c.y) < 30) {
+                    coins.splice(i, 1);
+                    score += 10;
+                }
+            });
+        }
+        
+        function jump() {
+            if (mario.onGround) {
+                mario.vy = -14;
+                mario.onGround = false;
+            } else if (canDoubleJump) {
+                mario.vy = -14;
+                canDoubleJump = false;
+            }
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = Math.floor(score);
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        function restart() {
+            init();
+        }
+        
+        canvas.addEventListener('click', jump);
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') jump();
+        });
+        
+        function gameDraw() {
+            drawBackground();
+            drawObstacles();
+            drawCoins();
+            drawMario();
+        }
+        
+        init();
+        gameLoop = setInterval(() => { update(); gameDraw(); }, 1000/60);
+    </script>
+</body>
+</html>

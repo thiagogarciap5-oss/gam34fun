@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breakout</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0f; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: system-ui, sans-serif; color: #fff; }
+        h1 { color: #ff6b35; margin-bottom: 10px; }
+        #score { font-size: 24px; color: #fbbf24; margin-bottom: 15px; }
+        canvas { border: 3px solid #ff6b35; border-radius: 8px; background: #0f0f1a; }
+        .instructions { margin-top: 15px; color: #888; font-size: 14px; }
+        #winMsg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 36px; color: #4ade80; display: none; }
+    </style>
+</head>
+<body>
+    <h1>🧱 BREAKOUT</h1>
+    <div id="score">Score: 0 | Lives: 3</div>
+    <div style="position: relative;">
+        <canvas id="game" width="600" height="500"></canvas>
+        <div id="winMsg">🎉 YOU WIN! 🎉</div>
+    </div>
+    <p class="instructions">Mouse to move paddle</p>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        
+        const PADDLE_W = 100, PADDLE_H = 15, BALL_R = 8;
+        const BRICK_ROWS = 6, BRICK_COLS = 10;
+        const BRICK_W = 55, BRICK_H = 20;
+        
+        let paddle, ball, bricks, score, lives, gameLoop, gameRunning;
+        
+        function init() {
+            paddle = { x: 250, y: 470 };
+            ball = { x: 300, y: 450, vx: 4, vy: -4 };
+            bricks = [];
+            score = 0;
+            lives = 3;
+            gameRunning = true;
+            
+            // Create bricks
+            const colors = ['#ff0055', '#ff6600', '#ffcc00', '#00ff00', '#00ccff', '#9900ff'];
+            for (let r = 0; r < BRICK_ROWS; r++) {
+                for (let c = 0; c < BRICK_COLS; c++) {
+                    bricks.push({
+                        x: 15 + c * (BRICK_W + 5),
+                        y: 50 + r * (BRICK_H + 5),
+                        color: colors[r],
+                        alive: true
+                    });
+                }
+            }
+            updateScore();
+            document.getElementById('winMsg').style.display = 'none';
+        }
+        
+        function updateScore() {
+            document.getElementById('score').textContent = 'Score: ' + score + ' | Lives: ' + lives;
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#0f0f1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Bricks
+            bricks.forEach(b => {
+                if (b.alive) {
+                    ctx.fillStyle = b.color;
+                    ctx.fillRect(b.x, b.y, BRICK_W, BRICK_H);
+                    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                    ctx.fillRect(b.x, b.y, BRICK_W, 5);
+                }
+            });
+            
+            // Paddle
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(paddle.x, paddle.y, PADDLE_W, PADDLE_H);
+            
+            // Ball
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function update() {
+            if (!gameRunning) return;
+            
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            
+            // Walls
+            if (ball.x - BALL_R < 0 || ball.x + BALL_R > canvas.width) ball.vx *= -1;
+            if (ball.y - BALL_R < 0) ball.vy *= -1;
+            
+            // Bottom - lose life
+            if (ball.y + BALL_R > canvas.height) {
+                lives--;
+                updateScore();
+                if (lives <= 0) {
+                    gameRunning = false;
+                    setTimeout(() => {
+                        alert('Game Over! Score: ' + score);
+                        init();
+                    }, 100);
+                } else {
+                    ball = { x: paddle.x + PADDLE_W/2, y: 450, vx: 4, vy: -4 };
+                }
+            }
+            
+            // Paddle
+            if (ball.y + BALL_R > paddle.y && ball.x > paddle.x && ball.x < paddle.x + PADDLE_W) {
+                ball.vy = -Math.abs(ball.vy);
+                ball.vx += (ball.x - (paddle.x + PADDLE_W/2)) * 0.1;
+            }
+            
+            // Bricks
+            bricks.forEach(b => {
+                if (b.alive && ball.x > b.x && ball.x < b.x + BRICK_W && ball.y > b.y && ball.y < b.y + BRICK_H) {
+                    b.alive = false;
+                    ball.vy *= -1;
+                    score += 10;
+                    updateScore();
+                }
+            });
+            
+            // Win
+            if (bricks.every(b => !b.alive)) {
+                gameRunning = false;
+                document.getElementById('winMsg').style.display = 'block';
+                setTimeout(() => {
+                    alert('You Win! Score: ' + score);
+                    init();
+                }, 2000);
+            }
+        }
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            paddle.x = e.clientX - rect.left - PADDLE_W/2;
+            paddle.x = Math.max(0, Math.min(canvas.width - PADDLE_W, paddle.x));
+        });
+        
+        init();
+        gameLoop = setInterval(() => { update(); draw(); }, 1000/60);
+    </script>
+</body>
+</html>
