@@ -1,155 +1,152 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { initialGames } from '../lib/games';
-import { CATEGORIES, GameCategory } from '../lib/types';
+import { CATEGORIES } from '../lib/types';
 import type { Game } from '../lib/types';
-import Header from '../components/Header';
-import Hero from '../components/Hero';
-import GameGrid from '../components/GameGrid';
-import CategoryFilter from '../components/CategoryFilter';
-import Footer from '../components/Footer';
-import GameModal from '../components/GameModal';
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<GameCategory | 'all'>('all');
-  const [games, setGames] = useState<Game[]>(initialGames);
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // Simulate loading state for animations
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Filter games based on search and category
   const filteredGames = useMemo(() => {
-    return games.filter((game) => {
+    return initialGames.filter((game) => {
       const matchesSearch = 
         game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        game.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         game.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
       
       const matchesCategory = selectedCategory === 'all' || game.category === selectedCategory;
       
       return matchesSearch && matchesCategory;
     });
-  }, [games, searchQuery, selectedCategory]);
-
-  // Get featured games
-  const featuredGames = useMemo(() => {
-    return games.filter(game => game.featured).slice(0, 6);
-  }, [games]);
-
-  // Get new games
-  const newGames = useMemo(() => {
-    return games.filter(game => game.new).slice(0, 8);
-  }, [games]);
+  }, [searchQuery, selectedCategory]);
 
   const handlePlayGame = (game: Game) => {
-    setSelectedGame(game);
-  };
-
-  const handleCloseModal = () => {
-    setSelectedGame(null);
+    // Open the game in a new tab
+    window.open(game.gameUrl || `/games/${game.id}/index.html`, '_blank');
   };
 
   return (
-    <main className="min-h-screen relative overflow-hidden">
-      {/* Animated background orbs */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="orb orb-pink animate-float" style={{ top: '10%', left: '5%', animationDelay: '0s' }} />
-        <div className="orb orb-purple animate-float" style={{ top: '60%', right: '10%', animationDelay: '2s' }} />
-        <div className="orb orb-cyan animate-float" style={{ bottom: '20%', left: '20%', animationDelay: '4s' }} />
-      </div>
-
-      {/* Grid background */}
-      <div className="fixed inset-0 grid-bg pointer-events-none" />
-
-      {/* Content */}
-      <div className="relative z-10">
-        <Header 
-          searchQuery={searchQuery} 
-          onSearchChange={setSearchQuery} 
-        />
-        
-        {searchQuery || selectedCategory !== 'all' ? (
-          <div className="container mx-auto px-4 py-8">
-            <div className="mb-8">
-              <CategoryFilter 
-                selectedCategory={selectedCategory}
-                onCategoryChange={setSelectedCategory}
-              />
-            </div>
-            
-            <div className="mb-6">
-              <h2 className="text-2xl font-display font-bold text-white mb-2">
-                {searchQuery ? `Search results for "${searchQuery}"` : `${CATEGORIES.find(c => c.id === selectedCategory)?.label || 'All'} Games`}
-              </h2>
-              <p className="text-gray-400">
-                {filteredGames.length} {filteredGames.length === 1 ? 'game' : 'games'} found
-              </p>
-            </div>
-
-            <GameGrid 
-              games={filteredGames} 
-              isLoading={isLoading}
-              onPlayGame={handlePlayGame}
+    <div style={{ backgroundColor: '#f5f5f5', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
+      {/* Simple Header */}
+      <div style={{ backgroundColor: '#fff', padding: '16px', borderBottom: '1px solid #ddd', position: 'sticky', top: 0, zIndex: 100 }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>GameHub</h1>
+          <div style={{ flex: 1 }}>
+            <input
+              type="text"
+              placeholder="Search games..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ 
+                width: '100%', 
+                padding: '10px 16px', 
+                border: '1px solid #ddd', 
+                borderRadius: '24px',
+                fontSize: '14px',
+                outline: 'none'
+              }}
             />
           </div>
-        ) : (
-          <>
-            <Hero featuredGames={featuredGames} onPlayGame={handlePlayGame} />
-            
-            <div className="container mx-auto px-4 py-12">
-              <section className="mb-16">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-3xl font-display font-bold neon-text-pink">
-                    🆕 New Releases
-                  </h2>
-                  <span className="text-sm text-gray-400 animate-pulse">Updated hourly</span>
-                </div>
-                <GameGrid 
-                  games={newGames} 
-                  isLoading={isLoading}
-                  onPlayGame={handlePlayGame}
-                  compact
-                />
-              </section>
-
-              <section className="mb-16">
-                <CategoryFilter 
-                  selectedCategory={selectedCategory}
-                  onCategoryChange={setSelectedCategory}
-                />
-              </section>
-
-              <section>
-                <h2 className="text-3xl font-display font-bold neon-text-cyan mb-6">
-                  🎮 All Games
-                </h2>
-                <GameGrid 
-                  games={games} 
-                  isLoading={isLoading}
-                  onPlayGame={handlePlayGame}
-                />
-              </section>
-            </div>
-          </>
-        )}
-
-        <Footer />
+        </div>
       </div>
 
-      {/* Game Modal */}
-      {selectedGame && (
-        <GameModal 
-          game={selectedGame} 
-          onClose={handleCloseModal} 
-        />
-      )}
-    </main>
+      {/* Categories */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <button
+          onClick={() => setSelectedCategory('all')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '20px',
+            border: selectedCategory === 'all' ? '2px solid #333' : '1px solid #ddd',
+            backgroundColor: selectedCategory === 'all' ? '#333' : '#fff',
+            color: selectedCategory === 'all' ? '#fff' : '#333',
+            cursor: 'pointer',
+            fontSize: '13px'
+          }}
+        >
+          All Games
+        </button>
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => setSelectedCategory(cat.id)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '20px',
+              border: selectedCategory === cat.id ? '2px solid #333' : '1px solid #ddd',
+              backgroundColor: selectedCategory === cat.id ? '#333' : '#fff',
+              color: selectedCategory === cat.id ? '#fff' : '#333',
+              cursor: 'pointer',
+              fontSize: '13px'
+            }}
+          >
+            {cat.emoji} {cat.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Games Grid */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '16px' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+          gap: '20px' 
+        }}>
+          {filteredGames.map((game) => (
+            <div
+              key={game.id}
+              onClick={() => handlePlayGame(game)}
+              style={{
+                backgroundColor: '#fff',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                cursor: 'pointer',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                transition: 'transform 0.2s, box-shadow 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-4px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+              }}
+            >
+              <div style={{ 
+                aspectRatio: '16/9', 
+                backgroundColor: '#ddd',
+                backgroundImage: `url(${game.thumbnail})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }} />
+              <div style={{ padding: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>{game.title}</h3>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {filteredGames.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '60px', color: '#666' }}>
+            <p style={{ fontSize: '18px' }}>No games found</p>
+          </div>
+        )}
+      </div>
+
+      {/* Simple Footer */}
+      <div style={{ 
+        maxWidth: '1200px', 
+        margin: '40px auto 0', 
+        padding: '20px', 
+        borderTop: '1px solid #ddd',
+        textAlign: 'center',
+        color: '#666',
+        fontSize: '13px'
+      }}>
+        <p>GameHub - Play free games online</p>
+      </div>
+    </div>
   );
 }

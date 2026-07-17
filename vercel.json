@@ -1,28 +1,5 @@
 {
   "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "",
   "framework": "nextjs",
-  "outputDirectory": ".next",
-  "headers": [
-    {
-      "source": "/games/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "ALLOWALL"
-        }
-      ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/games/:path*",
-      "destination": "/games/:path*"
-    }
-  ]
+  "outputDirectory": ".next"
 }

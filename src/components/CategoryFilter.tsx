@@ -35,7 +35,7 @@ export default function CategoryFilter({ selectedCategory, onCategoryChange }: C
                 : 'text-white'
             }`}
           >
-            <span className="text-lg">{category.icon}</span>
+            <span className="text-lg">{category.emoji}</span>
             <span className="font-medium">{category.label}</span>
           </button>
         ))}
